@@ -25,9 +25,12 @@
       <dl_settings name="video">
         <dl_setting var="viewvideo.use_rtp" min="0" step="1" max="1" values="FALSE|TRUE" shortname="rtp" module="computer_vision/viewvideo" param="VIEWVIDEO_USE_RTP"/>
       </dl_settings>
+      <dl_settings name="left">
+        <dl_setting var="cnt_left" min="0" step="1" max="2000000" shortname="lc" module="computer_vision/cv_detect_color_object"/>
+      		</dl_settings>
     </dl_settings>
   </settings>
-
+  
   <depends>video_thread</depends>
   <header>
     <file name="viewvideo.h"/>
@@ -40,6 +43,7 @@
     <!-- Include the needed Computer Vision files -->
     <include name="modules/computer_vision"/>
     <file name="rtp.c" dir="modules/computer_vision/lib/encoding"/>
+    <file name="cv_detect_color_object.c" dir="modules/computer_vision"/>
 
     <!-- Define the network connection to send images over -->
     <raw>

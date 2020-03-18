@@ -1,5 +1,4 @@
-/*
- * Copyright (C) 2019 Kirk Scheper <kirkscheper@gmail.com>
+ /*Copyright (C) 2019 Kirk Scheper <kirkscheper@gmail.com>
  *
  * This file is part of Paparazzi.
  *
@@ -78,9 +77,8 @@ struct color_object_t {
   bool updated;
 };
 struct color_object_t global_filters[2];
-float cnt_right;
-float cnt_left;
-
+float cnt_right=0;
+float cnt_left=0;
 
 // Function
 uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc, bool draw,
@@ -220,42 +218,68 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
   uint8_t *buffer = img->buf;
 
   // Go through all the pixels
+  //left half
   for (uint16_t y = 0; y < img->h; y++) {
-    for (uint16_t x = 0; x < img->w; x ++) {
+    for (uint16_t x = 0; x < (img->w)/2; x ++) {
       // Check if the color is inside the specified values
       uint8_t *yp, *up, *vp;
       if (x % 2 == 0) {
         // Even x
-        up = &buffer[y * 2 * img->w + 2 * x];      // U
-        yp = &buffer[y * 2 * img->w + 2 * x + 1];  // Y1
-        vp = &buffer[y * 2 * img->w + 2 * x + 2];  // V
+        up = &buffer[y * 2 * (img->w)/2 + 2 * x];      // U
+        yp = &buffer[y * 2 * (img->w)/2 + 2 * x + 1];  // Y1
+        vp = &buffer[y * 2 * (img->w)/2 + 2 * x + 2];  // V
         //yp = &buffer[y * 2 * img->w + 2 * x + 3]; // Y2
       } else {
         // Uneven x
-        up = &buffer[y * 2 * img->w + 2 * x - 2];  // U
+        up = &buffer[y * 2 * (img->w)/2 + 2 * x - 2];  // U
         //yp = &buffer[y * 2 * img->w + 2 * x - 1]; // Y1
-        vp = &buffer[y * 2 * img->w + 2 * x];      // V
-        yp = &buffer[y * 2 * img->w + 2 * x + 1];  // Y2
+        vp = &buffer[y * 2 * (img->w)/2 + 2 * x];      // V
+        yp = &buffer[y * 2 * (img->w)/2 + 2 * x + 1];  // Y2
       }
       if ( (*yp >= lum_min) && (*yp <= lum_max) &&
            (*up >= cb_min ) && (*up <= cb_max ) &&
            (*vp >= cr_min ) && (*vp <= cr_max )) {
-        cnt++;
+        cnt_left ++;
         tot_x += x;
         tot_y += y;
         if (draw){
           *yp = 255;  // make pixel brighter in image
         }
-        ///HERE IS THE SPLITTING IMAGE
-        if((y<(img->h)/2)&&(cb_min==cod_cb_min1)){ ///For green change to 2
-        	cnt_left++;
-        }else{
-        	if ((y>(img->h)/2)&&(cb_min==cod_cb_min1)){
-        	cnt_right++;
-        	}}
       }
     }
   }
+
+//right half
+    for (uint16_t y = 0; y < img->h; y++) {
+    for (uint16_t x = (img->w)/2; x < img->w; x ++) {
+      // Check if the color is inside the specified values
+      uint8_t *yp, *up, *vp;
+      if (x % 2 == 0) {
+        // Even x
+        up = &buffer[y * 2 * (img->w)/2 + 2 * x];      // U
+        yp = &buffer[y * 2 * (img->w)/2 + 2 * x + 1];  // Y1
+        vp = &buffer[y * 2 * (img->w)/2 + 2 * x + 2];  // V
+        //yp = &buffer[y * 2 * img->w + 2 * x + 3]; // Y2
+      } else {
+        // Uneven x
+        up = &buffer[y * 2 * (img->w)/2 + 2 * x - 2];  // U
+        //yp = &buffer[y * 2 * img->w + 2 * x - 1]; // Y1
+        vp = &buffer[y * 2 * (img->w)/2 + 2 * x];      // V
+        yp = &buffer[y * 2 * (img->w)/2 + 2 * x + 1];  // Y2
+      }
+      if ( (*yp >= lum_min) && (*yp <= lum_max) &&
+           (*up >= cb_min ) && (*up <= cb_max ) &&
+           (*vp >= cr_min ) && (*vp <= cr_max )) {
+        cnt_right ++;
+        tot_x += x;
+        tot_y += y;
+        if (draw){
+          *yp = 255;  // make pixel brighter in image
+        }
+      }
+    }
+  }
+  cnt=cnt_right+cnt_left;
   if (cnt > 0) {
     *p_xc = (int32_t)roundf(tot_x / ((float) cnt) - img->w * 0.5f);
     *p_yc = (int32_t)roundf(img->h * 0.5f - tot_y / ((float) cnt));
@@ -263,6 +287,7 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
     *p_xc = 0;
     *p_yc = 0;
   }
+
   return cnt;
 
 }

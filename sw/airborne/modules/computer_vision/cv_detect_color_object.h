@@ -45,7 +45,8 @@ extern uint8_t cod_cb_min2;
 extern uint8_t cod_cb_max2;
 extern uint8_t cod_cr_min2;
 extern uint8_t cod_cr_max2;
-
+extern float cnt_right;
+extern float cnt_left;
 extern bool cod_draw1;
 extern bool cod_draw2;
 
