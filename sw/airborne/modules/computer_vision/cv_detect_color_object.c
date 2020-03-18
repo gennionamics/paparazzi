@@ -78,6 +78,9 @@ struct color_object_t {
   bool updated;
 };
 struct color_object_t global_filters[2];
+float cnt_right;
+float cnt_left;
+
 
 // Function
 uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc, bool draw,
@@ -237,12 +240,19 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
       if ( (*yp >= lum_min) && (*yp <= lum_max) &&
            (*up >= cb_min ) && (*up <= cb_max ) &&
            (*vp >= cr_min ) && (*vp <= cr_max )) {
-        cnt ++;
+        cnt++;
         tot_x += x;
         tot_y += y;
         if (draw){
           *yp = 255;  // make pixel brighter in image
         }
+        ///HERE IS THE SPLITTING IMAGE
+        if((y<(img->h)/2)&&(cb_min==cod_cb_min1)){ ///For green change to 2
+        	cnt_left++;
+        }else{
+        	if ((y>(img->h)/2)&&(cb_min==cod_cb_min1)){
+        	cnt_right++;
+        	}}
       }
     }
   }
@@ -254,6 +264,7 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
     *p_yc = 0;
   }
   return cnt;
+
 }
 
 void color_object_detector_periodic(void)
