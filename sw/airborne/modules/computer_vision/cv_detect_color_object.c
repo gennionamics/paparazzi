@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
+#include <time.h>
 #include "pthread.h"
 
 #define PRINT(string,...) fprintf(stderr, "[object_detector->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
@@ -80,6 +81,11 @@ struct color_object_t {
 struct color_object_t global_filters[2];
 float cnt_right;
 float cnt_left;
+float cnt_right2;
+float cnt_left2;
+uint32_t start_time;
+uint32_t stop_time;
+
 
 
 // Function
@@ -131,6 +137,7 @@ static struct image_t *object_detector(struct image_t *img, uint8_t filter)
   VERBOSE_PRINT("Color count %d: %u, threshold %u, x_c %d, y_c %d\n", camera, object_count, count_threshold, x_c, y_c);
   VERBOSE_PRINT("centroid %d: (%d, %d) r: %4.2f a: %4.2f\n", camera, x_c, y_c,
         hypotf(x_c, y_c) / hypotf(img->w * 0.5, img->h * 0.5), RadOfDeg(atan2f(y_c, x_c)));
+
 
   pthread_mutex_lock(&mutex);
   global_filters[filter-1].color_count = count;
@@ -214,6 +221,7 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
                               uint8_t cb_min, uint8_t cb_max,
                               uint8_t cr_min, uint8_t cr_max)
 {
+  start_time= get_sys_time_usec(); //TIME STAMP AT BEGINNNING
   uint32_t cnt = 0;
   uint32_t tot_x = 0;
   uint32_t tot_y = 0;
@@ -247,11 +255,17 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
           *yp = 255;  // make pixel brighter in image
         }
         ///HERE IS THE SPLITTING IMAGE
-        if((y<(img->h)/2)&&(cb_min==cod_cb_min1)){ ///For green change to 2
+        if((y<(img->h)/2)&&(cb_min==cod_cb_min1)){ ///For orange pixels
         	cnt_left++;
         }else{
         	if ((y>(img->h)/2)&&(cb_min==cod_cb_min1)){
         	cnt_right++;
+        	}}
+        if((y<(img->h)/2)&&(cb_min==cod_cb_min2)){ ///For green pixels
+        	cnt_left2++;
+        }else{
+        	if ((y>(img->h)/2)&&(cb_min==cod_cb_min2)){
+        	cnt_right2++;
         	}}
       }
     }
@@ -269,6 +283,7 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
 
 void color_object_detector_periodic(void)
 {
+
   static struct color_object_t local_filters[2];
   pthread_mutex_lock(&mutex);
   memcpy(local_filters, global_filters, 2*sizeof(struct color_object_t));
@@ -284,4 +299,6 @@ void color_object_detector_periodic(void)
         0, 0, local_filters[1].color_count, 1);
     local_filters[1].updated = false;
   }
+	stop_time=get_sys_time_usec(); //TIME STAMP AT THE END
+
 }
