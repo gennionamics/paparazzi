@@ -47,6 +47,7 @@
 static pthread_mutex_t mutex;
 
 
+float dir_cnt;
 
 uint8_t chooseRandomIncrementAvoidance(void);
 
@@ -59,9 +60,9 @@ enum navigation_state_t {
 };
 
 // define settings
-float oag_color_count_frac = 0.18f;       // obstacle detection threshold as a fraction of total of image
-float oag_floor_count_frac = 0.05f;       // floor detection threshold as a fraction of total of image
-float oag_max_speed = 0.5f;               // max flight speed [m/s]
+float oag_color_count_frac = 0.195f;       // obstacle detection threshold as a fraction of total of image
+float oag_floor_count_frac = 0.0625f;       // floor detection threshold as a fraction of total of image
+float oag_max_speed = 0.8f;               // max flight speed [m/s]
 float oag_heading_rate = RadOfDeg(50.f);  // heading change setpoint for avoidance [rad/s]
 
 // define and initialise global variables
@@ -71,8 +72,8 @@ int32_t floor_count = 0;                // green color count from color filter f
 int32_t floor_centroid = 0;             // floor detector centroid in y direction (along the horizon)
 float avoidance_heading_direction = 0;  // heading change direction for avoidance [rad/s]
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead if safe.
-int32_t cnt_right_orange;
-int32_t cnt_left_orange;
+//int32_t cnt_right_orange;
+//int32_t cnt_left_orange;
 int32_t cnt_right_green;
 int32_t cnt_left_green;
 uint32_t start_time_orange;
@@ -95,8 +96,8 @@ static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
                                int32_t quality, int16_t __attribute__((unused)) extra)
 {
   color_count = quality;
-  cnt_left_orange=cnt_left;
-  cnt_right_orange=cnt_right;
+ // cnt_left_orange=cnt_left;
+ // cnt_right_orange=cnt_right;
 
 }
 
@@ -114,11 +115,11 @@ static void floor_detection_cb(uint8_t __attribute__((unused)) sender_id,
 {
   floor_count = quality;
   floor_centroid = pixel_y;
-  cnt_left_green=cnt_left2;
-  cnt_right_green=cnt_right2;
+  cnt_left_green=cnt_left;
+  cnt_right_green=cnt_right;
 }
 
-static void send_count(struct transport_tx *trans, struct link_device *dev)
+/*static void send_count(struct transport_tx *trans, struct link_device *dev)
 {
 
   // Send telemetry message
@@ -146,7 +147,7 @@ void orange_avoider_guided_init(void)
  */
 void orange_avoider_guided_periodic(void)
 {
-  start_time_orange=get_sys_time_usec(); //TIME STAMP AT BEGINNING
+  start_time_orange=get_sys_time_usec();
 
   // Only run the mudule if we are in the correct flight mode
   if (guidance_h.mode != GUIDANCE_H_MODE_GUIDED) {
@@ -156,25 +157,25 @@ void orange_avoider_guided_periodic(void)
   }
 
   // compute current color thresholds
-  int32_t color_count_threshold = oag_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
-  int32_t floor_count_threshold = oag_floor_count_frac * front_camera.output_size.w * front_camera.output_size.h;
+  int32_t obstacle_count_threshold = oag_color_count_frac * 5 * (front_camera.output_size.h - 70);
+  int32_t bound_count_threshold = oag_floor_count_frac * 5 * front_camera.output_size.h;
   float floor_centroid_frac = floor_centroid / (float)front_camera.output_size.h / 2.f;
 
 
   //IF YOU WANT TO SEE ANY OTHER VARIABLE ON REAL-TIME IN PAPARAZZI PUT IT HERE
   VERBOSE_PRINT("Navigation method takes %d us", start_time_orange-stop_time_orange);
   VERBOSE_PRINT("Visual method takes %d us", fabsf(stop_time - start_time));
-  VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, color_count_threshold, navigation_state);
-  VERBOSE_PRINT("Floor count: %d, threshold: %d", floor_count, floor_count_threshold);
-  VERBOSE_PRINT("Floor centroid: %f\n", floor_centroid_frac);
-  VERBOSE_PRINT("Left count: %d   Right count: %d\n",cnt_left_orange,cnt_right_orange);
+  // VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, obstacle_count_threshold, navigation_state);
+  VERBOSE_PRINT("Floor count: %d, threshold: %d \n", floor_count, bound_count_threshold);
+ // VERBOSE_PRINT("Floor centroid: %f\n", floor_centroid_frac);
+  VERBOSE_PRINT("Left count: %d   Right count: %d\n",cnt_left_green,cnt_right_green);
   VERBOSE_PRINT("Confidence: %d\n", obstacle_free_confidence);
 
   ;
 
 
   // update our safe confidence using color threshold
-  if(color_count < color_count_threshold){
+  if(floor_count > obstacle_count_threshold){
     obstacle_free_confidence++;
   } else {
     obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
@@ -183,11 +184,11 @@ void orange_avoider_guided_periodic(void)
   // bound obstacle_free_confidence
   Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
-  float speed_sp = fminf(oag_max_speed, 0.2f * obstacle_free_confidence);
+  float speed_sp = fminf(oag_max_speed, 0.3f * obstacle_free_confidence);
 
   switch (navigation_state){
     case SAFE:
-      if (floor_count < floor_count_threshold || fabsf(floor_centroid_frac) > 0.1){
+      if (floor_count < bound_count_threshold){ //|| fabsf(floor_centroid_frac) > 0.1){
         navigation_state = OUT_OF_BOUNDS;
       } else if (obstacle_free_confidence == 0){
         navigation_state = OBSTACLE_FOUND;
@@ -207,7 +208,7 @@ void orange_avoider_guided_periodic(void)
 
       break;
     case SEARCH_FOR_SAFE_HEADING:
-    	guidance_h_set_guided_body_vel(0.12f*speed_sp+0.1f, 0);
+    	guidance_h_set_guided_body_vel(0.11f*speed_sp+0.12f, 0);
     	guidance_h_set_guided_heading_rate(avoidance_heading_direction * oag_heading_rate);
 
       // make sure we have a couple of good readings before declaring the way safe
@@ -228,7 +229,7 @@ void orange_avoider_guided_periodic(void)
       break;
     case REENTER_ARENA:
       // force floor center to opposite side of turn to head back into arena
-      if (floor_count >= floor_count_threshold && avoidance_heading_direction * floor_centroid_frac >= 0.f){
+      if (floor_count >= bound_count_threshold){// && avoidance_heading_direction * floor_centroid_frac >= 0.f){
         // return to heading mode
         guidance_h_set_guided_heading(stateGetNedToBodyEulers_f()->psi);
 
@@ -247,10 +248,10 @@ void orange_avoider_guided_periodic(void)
   pthread_mutex_lock(&mutex);
   cnt_right=0;
   cnt_left=0;
-  cnt_left2=0;
-  cnt_right2=0;
+  //cnt_left2=0;
+  //cnt_right2=0;
   pthread_mutex_unlock(&mutex);
-  stop_time_orange=get_sys_time_usec(); //TIME STAMP AT THE END
+  stop_time_orange=get_sys_time_usec();
   return;
 
 }
@@ -262,11 +263,11 @@ uint8_t chooseRandomIncrementAvoidance(void)
 {
 
   // Randomly choose CW or CCW avoiding direction
-  if ((cnt_right_orange>cnt_left_orange) || (cnt_right_green<cnt_left_green)){
+  if (cnt_right_green<cnt_left_green){
     avoidance_heading_direction = -1.f; //Negative is left
     VERBOSE_PRINT("Set avoidance increment to: %f\n", avoidance_heading_direction * oag_heading_rate);
 
-  } else if ((cnt_right_orange<cnt_left_orange) || (cnt_right_green>cnt_left_green))  {
+  } else  {
     avoidance_heading_direction = 1.f;
     VERBOSE_PRINT("Set avoidance increment to: %f\n", avoidance_heading_direction * oag_heading_rate);
 

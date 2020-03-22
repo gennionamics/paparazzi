@@ -10,7 +10,7 @@
  *
  * Paparazzi is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANzTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -85,6 +85,8 @@ float cnt_right2;
 float cnt_left2;
 uint32_t start_time;
 uint32_t stop_time;
+
+uint8_t vector_x[]={20, 40, 60, 80, 100};
 
 
 
@@ -221,16 +223,18 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
                               uint8_t cb_min, uint8_t cb_max,
                               uint8_t cr_min, uint8_t cr_max)
 {
-  start_time= get_sys_time_usec(); //TIME STAMP AT BEGINNNING
+  start_time= get_sys_time_usec();
   uint32_t cnt = 0;
   uint32_t tot_x = 0;
   uint32_t tot_y = 0;
+  uint32_t x=0;
   uint8_t *buffer = img->buf;
 
   // Go through all the pixels
-  for (uint16_t y = 0; y < img->h; y++) {
-    for (uint16_t x = 0; x < img->w; x ++) {
+  for (uint16_t y = 35; y < ((img->h)-35); y++) {
+    for (uint16_t a = 0; a < sizeof(vector_x); a ++) {
       // Check if the color is inside the specified values
+    	x=vector_x[a];
       uint8_t *yp, *up, *vp;
       if (x % 2 == 0) {
         // Even x
@@ -247,7 +251,7 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
       }
       if ( (*yp >= lum_min) && (*yp <= lum_max) &&
            (*up >= cb_min ) && (*up <= cb_max ) &&
-           (*vp >= cr_min ) && (*vp <= cr_max )) {
+           (*vp >= cr_min ) && (*vp <= cr_max )&& cb_min==cod_cb_min2) {
         cnt++;
         tot_x += x;
         tot_y += y;
@@ -255,18 +259,20 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
           *yp = 255;  // make pixel brighter in image
         }
         ///HERE IS THE SPLITTING IMAGE
-        if((y<(img->h)/2)&&(cb_min==cod_cb_min1)){ ///For orange pixels
-        	cnt_left++;
+      //  if((y<(img->h)/2)&&(cb_min==cod_cb_min1)){ ///For green change to 2
+        //	cnt_left++;
+        //}else{
+        	//if ((y>(img->h)/2)&&(cb_min==cod_cb_min1)){
+        	//cnt_right++;
+        	//}}
+        if(y<(img->h)/2){ ///For green change to 2
+        	cnt_left=cnt_left+5;
         }else{
-        	if ((y>(img->h)/2)&&(cb_min==cod_cb_min1)){
-        	cnt_right++;
+        	if (y>(img->h)/2){
+        	cnt_right=cnt_right+5;
+
         	}}
-        if((y<(img->h)/2)&&(cb_min==cod_cb_min2)){ ///For green pixels
-        	cnt_left2++;
-        }else{
-        	if ((y>(img->h)/2)&&(cb_min==cod_cb_min2)){
-        	cnt_right2++;
-        	}}
+        break;
       }
     }
   }
@@ -299,6 +305,6 @@ void color_object_detector_periodic(void)
         0, 0, local_filters[1].color_count, 1);
     local_filters[1].updated = false;
   }
-	stop_time=get_sys_time_usec(); //TIME STAMP AT THE END
+	stop_time=get_sys_time_usec();
 
 }

@@ -59,3 +59,4 @@ extern void color_object_detector_init(void);
 extern void color_object_detector_periodic(void);
 
 #endif /* COLOR_OBJECT_DETECTOR_CV_H */
+
