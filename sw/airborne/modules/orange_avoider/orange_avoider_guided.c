@@ -118,12 +118,12 @@ static void floor_detection_cb(uint8_t __attribute__((unused)) sender_id,
   cnt_right_green=cnt_right2;
 }
 
-static void send_count(struct transport_tx *trans, struct link_device *dev)
+/*static void send_count(struct transport_tx *trans, struct link_device *dev)
 {
 
   // Send telemetry message
-  pprz_msg_send_COUNT(trans, dev, AC_ID, &cnt_left, &cnt_right);
-}
+ pprz_msg_send_COUNT(trans, dev, AC_ID, &cnt_left, &cnt_right);
+}*/
 /*
  * Initialisation function
  */
@@ -136,7 +136,7 @@ void orange_avoider_guided_init(void)
   // bind our colorfilter callbacks to receive the color filter outputs
   AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
   AbiBindMsgVISUAL_DETECTION(FLOOR_VISUAL_DETECTION_ID, &floor_detection_ev, floor_detection_cb);
-  register_periodic_telemetry(DefaultPeriodic, 45, send_count);
+  //register_periodic_telemetry(DefaultPeriodic, 45, send_count);
 
 }
 

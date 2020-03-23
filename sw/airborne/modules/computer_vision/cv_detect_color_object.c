@@ -32,7 +32,12 @@
 #include "std.h"
 
 #include <stdio.h>
+#include <opencv2/opencv.hpp>
+#include <vector>
+#include <stdint.h>
+#include <algorithm>
 #include <stdbool.h>
+#include <iostream>
 #include <math.h>
 #include <time.h>
 #include "pthread.h"
@@ -85,6 +90,27 @@ float cnt_right2;
 float cnt_left2;
 uint32_t start_time;
 uint32_t stop_time;
+
+cv::Mat
+preprocess_image(const cv::Mat& image)
+{
+    // Rotate the images 90 degrees for better viewing
+    cv::Mat rotated_image;
+    cv::rotate(image, rotated_image, cv::ROTATE_90_COUNTERCLOCKWISE);
+    // Convert images to gray scale
+    cv::Mat gray_image;
+    cv::cvtColor(rotated_image, gray_image, cv::COLOR_BGR2GRAY);
+    // Blur images to reduce image noise
+    cv::Mat blurred_image;
+    cv::medianBlur(gray_image, blurred_image, 3);
+    // Adaptive threshold method
+    cv::Mat thresholded_image;
+    cv::adaptiveThreshold(blurred_image, thresholded_image, 255,
+                          cv::ADAPTIVE_THRESH_MEAN_C,
+                          cv::THRESH_BINARY_INV,
+                          11, 3);
+    return thresholded_image;
+}
 
 
 
