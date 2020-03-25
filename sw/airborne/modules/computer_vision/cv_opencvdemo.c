@@ -32,7 +32,7 @@
 #endif
 PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
 
-int* vertical_lines;
+
 
 // Function
 struct image_t *opencv_func(struct image_t *img);
@@ -41,7 +41,7 @@ struct image_t *opencv_func(struct image_t *img)
 
   if (img->type == IMAGE_YUV422) {
     // Call OpenCV (C++ from paparazzi C function)
-    vertical_lines = opencv_example((char *) img->buf, img->w, img->h);
+    opencv_example((char *) img->buf, img->w, img->h);
   }
 
 // opencv_example(NULL, 10,10);

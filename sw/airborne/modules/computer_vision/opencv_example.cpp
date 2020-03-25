@@ -37,7 +37,8 @@
 
 
 
-
+int s;
+int array[8];
 
 
 // FUNCTION 1: Pre-process image ready for obstacle edge detection
@@ -172,9 +173,10 @@ scan_for_vertical_lines(const cv::Mat& image,
 
 int* opencv_example(char *img, int width, int height)
 {
+
   // Create a new image, using the original bebop image.
   cv::Mat M(height, width, CV_8UC2, img);
-  cv::Mat image;
+  //cv::Mat image;
 
 /*#if OPENCVDEMO_GRAYSCALE
   //  Grayscale image example
@@ -211,13 +213,19 @@ int* opencv_example(char *img, int width, int height)
         }*/
         // Rotate the original colorful image as a canvas for the function draw_image_with_lines
         cv::Mat rotated_original;
-        cv::rotate(image, rotated_original, cv::ROTATE_90_COUNTERCLOCKWISE);
+       // cv::rotate(image, rotated_original, cv::ROTATE_90_COUNTERCLOCKWISE);
         // Generate the pre-processed images
-        cv::Mat preprocessed = preprocess_image(image);
+        cv::Mat preprocessed = preprocess_image(M);
         // Set the scan_height, line_width, min_ratio for obstacle verticle edge detection
         std::vector<int> xcoords = scan_for_vertical_lines(preprocessed, 170, 6, 0.7);
-        int* arr = &xcoords[0];
+        for (uint16_t j = 0; j < 8 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
+        	array[j]=0;}
+         s = static_cast<int>(xcoords.size());
+        for (int k = 0; k < s ; k++){
+        	array[k]=xcoords[k];
+        }
+
 
     //}
-    return arr;
+    return 0;
 }

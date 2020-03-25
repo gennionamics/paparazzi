@@ -28,6 +28,7 @@
 #include "modules/orange_avoider/orange_avoider_guided.h"
 #include "firmwares/rotorcraft/guidance/guidance_h.h"
 #include "modules/computer_vision/cv_detect_color_object.h"
+#include "modules/computer_vision/opencv_example.h"
 #include "modules/computer_vision/cv_opencvdemo.h"
 #include "generated/airframe.h"
 #include "state.h"
@@ -150,6 +151,7 @@ void orange_avoider_guided_init(void)
 void orange_avoider_guided_periodic(void)
 {
   start_time_orange=get_sys_time_usec();
+ // int array[5]= {7, 3, 6, 4, 1};
 
   // Only run the mudule if we are in the correct flight mode
   if (guidance_h.mode != GUIDANCE_H_MODE_GUIDED) {
@@ -172,7 +174,10 @@ void orange_avoider_guided_periodic(void)
  // VERBOSE_PRINT("Floor centroid: %f\n", floor_centroid_frac);
   VERBOSE_PRINT("Left count: %d   Right count: %d\n",cnt_left_green,cnt_right_green);
   VERBOSE_PRINT("Confidence: %d\n", obstacle_free_confidence);
-  VERBOSE_PRINT("Vertical lines: %d\n", vertical_lines);
+ /// VERBOSE_PRINT("Vertical lines: %d\n", s);
+  for (uint16_t j = 0; j < 8 ; j++){
+  VERBOSE_PRINT("Vertical lines: %d\n", array[j]);
+  }
 
 
 
