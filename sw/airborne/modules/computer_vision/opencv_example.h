@@ -30,11 +30,14 @@
 extern "C" {
 #endif
 
-int opencv_example(char *img, int width, int height);
+extern int* arr;
 
+int* opencv_example(char *img, int width, int height);
 #ifdef __cplusplus
 }
 #endif
 
 #endif
+
+
 

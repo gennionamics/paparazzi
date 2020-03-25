@@ -8,13 +8,15 @@
     The LDFLAGS in this file should be the same as in this conf file.
     </description>
 
-    <define name="OPENCVDEMO_CAMERA" value="front_camera|bottom_camera" description="Video device to use"/>
+    <define name="OPENCVDEMO_CAMERA" value="front_camera" description="Video device to use"/>
     <define name="OPENCVDEMO_FPS" value="0" description="The (maximum) frequency to run the calculations at. If zero, it will max out at the camera frame rate"/>
   </doc>
+  
+   <depends>video_thread</depends>
   <header>
     <file name="cv_opencvdemo.h"/>
   </header>
-  <init fun="opencvdemo_init()"/>
+    <init fun="opencvdemo_init()"/>
   <makefile target="ap">
     <file name="cv_opencvdemo.c"/>
     <file name="opencv_example.cpp"/>
@@ -40,7 +42,7 @@
     <file name="cv_opencvdemo.c"/>
     <file name="opencv_example.cpp"/>
     <file name="opencv_image_functions.cpp"/>
-    
+
     <flag name="CXXFLAGS" value="I$(PAPARAZZI_SRC)/sw/ext/opencv_bebop/install_pc/include"/>
     
     <flag name="LDFLAGS" value="L$(PAPARAZZI_HOME)/sw/ext/opencv_bebop/install_pc/lib" />

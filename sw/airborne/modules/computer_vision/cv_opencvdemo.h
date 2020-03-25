@@ -26,7 +26,9 @@
 #ifndef CV_OPENCVDEMO_H
 #define CV_OPENCVDEMO_H
 
+extern int* vertical_lines;
 extern void opencvdemo_init(void);
+
 
 #endif
 
