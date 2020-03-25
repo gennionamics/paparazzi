@@ -34,9 +34,42 @@ using namespace std;
 using namespace cv;
 #include "opencv_image_functions.h"
 
+#include <stdio.h>
+#include <opencv2/opencv.hpp>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <stdint.h>
+
+cv::Mat
+preprocess_image(const cv::Mat& image)
+{
+    // Rotate the images 90 degrees for better viewing
+    cv::Mat rotated_image;
+    cv::rotate(image, rotated_image, cv::ROTATE_90_COUNTERCLOCKWISE);
+    // Convert images to gray scale
+    cv::Mat gray_image;
+    cv::cvtColor(rotated_image, gray_image, cv::COLOR_BGR2GRAY);
+    // Blur images to reduce image noise
+    cv::Mat blurred_image;
+    cv::medianBlur(gray_image, blurred_image, 3);
+    // Adaptive threshold method
+    cv::Mat thresholded_image;
+    cv::adaptiveThreshold(blurred_image, thresholded_image, 255,
+                          cv::ADAPTIVE_THRESH_MEAN_C,
+                          cv::THRESH_BINARY_INV,
+                          11, 3);
+    return thresholded_image;
+}
 
 int opencv_example(char *img, int width, int height)
 {
+	// int, float = 4
+	// double = 4-8
+	// short = 2-4
+	// bool = 1-2
+	// char = 1
+
   // Create a new image, using the original bebop image.
   Mat M(height, width, CV_8UC2, img);
   Mat image;
