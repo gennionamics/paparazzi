@@ -80,6 +80,8 @@ int32_t cnt_right_green;
 int32_t cnt_left_green;
 uint32_t start_time_orange;
 uint32_t stop_time_orange;
+int vertical_lines[20];
+
 
 //LEVEL OF CONFIDENCE
 const int16_t max_trajectory_confidence = 3;  // number of consecutive negative object detections to be sure we are obstacle free
@@ -119,6 +121,9 @@ static void floor_detection_cb(uint8_t __attribute__((unused)) sender_id,
   floor_centroid = pixel_y;
   cnt_left_green=cnt_left;
   cnt_right_green=cnt_right;
+  for(uint16_t j = 0; j < 20 ; j++){
+	  vertical_lines[j]=array[j];
+  }
 }
 
 /*static void send_count(struct transport_tx *trans, struct link_device *dev)
@@ -151,7 +156,6 @@ void orange_avoider_guided_init(void)
 void orange_avoider_guided_periodic(void)
 {
   start_time_orange=get_sys_time_usec();
- // int array[5]= {7, 3, 6, 4, 1};
 
   // Only run the mudule if we are in the correct flight mode
   if (guidance_h.mode != GUIDANCE_H_MODE_GUIDED) {
@@ -175,8 +179,8 @@ void orange_avoider_guided_periodic(void)
   VERBOSE_PRINT("Left count: %d   Right count: %d\n",cnt_left_green,cnt_right_green);
   VERBOSE_PRINT("Confidence: %d\n", obstacle_free_confidence);
  /// VERBOSE_PRINT("Vertical lines: %d\n", s);
-  for (uint16_t j = 0; j < 8 ; j++){
-  VERBOSE_PRINT("Vertical lines: %d\n", array[j]);
+  for (uint16_t j = 0; j < 20 ; j++){
+  VERBOSE_PRINT("Vertical lines: %d\n", vertical_lines[j]);
   }
 
 

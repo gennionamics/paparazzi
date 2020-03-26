@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 extern int s;
-extern int array[8];
+extern int array[20];
 
 int* opencv_example(char *img, int width, int height);
 #ifdef __cplusplus

@@ -38,7 +38,7 @@
 
 
 int s;
-int array[8];
+int array[20];
 
 
 // FUNCTION 1: Pre-process image ready for obstacle edge detection
@@ -169,6 +169,20 @@ scan_for_vertical_lines(const cv::Mat& image,
 
     return discretized;
 }
+void
+draw_image_with_lines(cv::Mat* image,
+                      int scan_height,
+                      const std::vector<int> &lines)
+{
+    for (float xcoord : lines) {
+        for (int row = 0; row <= scan_height; ++row) {
+            using Vec3u8 = cv::Vec<uint8_t, 3>;
+            image->at<Vec3u8>(xcoord, row) = Vec3u8(12, 255, 36);
+        }
+    }
+    //cv::imshow(WINDOW_TITLE, *image);
+   // cv::waitKey(0);
+}
 
 
 int* opencv_example(char *img, int width, int height)
@@ -213,12 +227,13 @@ int* opencv_example(char *img, int width, int height)
         }*/
         // Rotate the original colorful image as a canvas for the function draw_image_with_lines
         cv::Mat rotated_original;
-       // cv::rotate(image, rotated_original, cv::ROTATE_90_COUNTERCLOCKWISE);
+       cv::rotate(M, rotated_original, cv::ROTATE_90_COUNTERCLOCKWISE);
         // Generate the pre-processed images
         cv::Mat preprocessed = preprocess_image(M);
         // Set the scan_height, line_width, min_ratio for obstacle verticle edge detection
         std::vector<int> xcoords = scan_for_vertical_lines(preprocessed, 170, 6, 0.7);
-        for (uint16_t j = 0; j < 8 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
+        draw_image_with_lines(&M, 170, xcoords);
+        for (uint16_t j = 0; j < 20 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
         	array[j]=0;}
          s = static_cast<int>(xcoords.size());
         for (int k = 0; k < s ; k++){
