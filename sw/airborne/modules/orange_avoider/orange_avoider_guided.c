@@ -36,7 +36,7 @@
 #include "subsystems/abi.h"
 #include "subsystems/datalink/telemetry.h"
 #include <stdio.h>
-#include <time.h>
+
 
 #define ORANGE_AVOIDER_VERBOSE TRUE
 
@@ -56,15 +56,17 @@ uint8_t chooseRandomIncrementAvoidance(void);
 enum navigation_state_t {
   SAFE,
   OBSTACLE_FOUND,
+//  VERTICAL_LINE_DETECTED,
   SEARCH_FOR_SAFE_HEADING,
+//  SEARCH_FOR_SAFE_HEADING_VERTICAL_LINE_DETECTED,
   OUT_OF_BOUNDS,
   REENTER_ARENA
 };
 
 // define settings
-float oag_color_count_frac = 0.195f;       // obstacle detection threshold as a fraction of total of image
+float oag_color_count_frac = 0.175f;       // obstacle detection threshold as a fraction of total of image
 float oag_floor_count_frac = 0.0625f;       // floor detection threshold as a fraction of total of image
-float oag_max_speed = 0.8f;               // max flight speed [m/s]
+float oag_max_speed = 0.9f;               // max flight speed [m/s]
 float oag_heading_rate = RadOfDeg(50.f);  // heading change setpoint for avoidance [rad/s]
 
 // define and initialise global variables
@@ -81,6 +83,8 @@ int32_t cnt_left_green;
 uint32_t start_time_orange;
 uint32_t stop_time_orange;
 int vertical_lines[20];
+
+
 
 
 //LEVEL OF CONFIDENCE
@@ -122,8 +126,7 @@ static void floor_detection_cb(uint8_t __attribute__((unused)) sender_id,
   cnt_left_green=cnt_left;
   cnt_right_green=cnt_right;
   for(uint16_t j = 0; j < 20 ; j++){
-	  vertical_lines[j]=array[j];
-  }
+	  vertical_lines[j]=array[j];}
 }
 
 /*static void send_count(struct transport_tx *trans, struct link_device *dev)
@@ -171,17 +174,25 @@ void orange_avoider_guided_periodic(void)
 
 
   //IF YOU WANT TO SEE ANY OTHER VARIABLE ON REAL-TIME IN PAPARAZZI PUT IT HERE
-  VERBOSE_PRINT("Navigation method takes %d us", start_time_orange-stop_time_orange);
-  VERBOSE_PRINT("Visual method takes %d us", fabsf(stop_time - start_time));
+  VERBOSE_PRINT("Line detection takes %d us \n", time_for_vertical_lines);
+  VERBOSE_PRINT("Visual method takes %d us \n" , floor_detection_time);
   // VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, obstacle_count_threshold, navigation_state);
   VERBOSE_PRINT("Floor count: %d, threshold: %d \n", floor_count, bound_count_threshold);
  // VERBOSE_PRINT("Floor centroid: %f\n", floor_centroid_frac);
   VERBOSE_PRINT("Left count: %d   Right count: %d\n",cnt_left_green,cnt_right_green);
   VERBOSE_PRINT("Confidence: %d\n", obstacle_free_confidence);
- /// VERBOSE_PRINT("Vertical lines: %d\n", s);
-  for (uint16_t j = 0; j < 20 ; j++){
-  VERBOSE_PRINT("Vertical lines: %d\n", vertical_lines[j]);
-  }
+
+
+  //UNCOMMENT THESE LINES TO PRINT THE X COORDINATES OF THE VERTICAL LINES DETECTED ON PAPARAZZI
+  //for (uint16_t j = 0; j < 20 ; j++){
+  //VERBOSE_PRINT("Vertical lines: %d\n", vertical_lines[j]);
+  //}
+
+  uint8_t number_of_lines=0;
+  for(uint16_t j = 0; j < 20 ; j++){
+	  if (vertical_lines[j]!=0){
+		  number_of_lines++;}
+	  }
 
 
 
@@ -203,11 +214,24 @@ void orange_avoider_guided_periodic(void)
         navigation_state = OUT_OF_BOUNDS;
       } else if (obstacle_free_confidence == 0){
         navigation_state = OBSTACLE_FOUND;
-      } else {
+    /*  } else if (number_of_lines!=0 && obstacle_free_confidence>=2){
+          navigation_state = VERTICAL_LINE_DETECTED;*/
+      }else {
         guidance_h_set_guided_body_vel(speed_sp, 0);
       }
 
       break;
+
+   /* case VERTICAL_LINE_DETECTED:
+      // stop
+      guidance_h_set_guided_body_vel(0, 0);
+
+      // randomly select new search direction
+      chooseRandomIncrementAvoidance();
+
+    navigation_state = SEARCH_FOR_SAFE_HEADING_VERTICAL_LINE_DETECTED;
+    break;*/
+
     case OBSTACLE_FOUND:
       // stop
       //guidance_h_set_guided_body_vel(0, 0);
@@ -216,8 +240,8 @@ void orange_avoider_guided_periodic(void)
       chooseRandomIncrementAvoidance();
 
       navigation_state = SEARCH_FOR_SAFE_HEADING;
-
       break;
+
     case SEARCH_FOR_SAFE_HEADING:
     	guidance_h_set_guided_body_vel(0.11f*speed_sp+0.12f, 0);
     	guidance_h_set_guided_heading_rate(avoidance_heading_direction * oag_heading_rate);
@@ -228,16 +252,25 @@ void orange_avoider_guided_periodic(void)
         navigation_state = SAFE;
       }
       break;
+
+   /* case SEARCH_FOR_SAFE_HEADING_VERTICAL_LINE_DETECTED:
+    	guidance_h_set_guided_heading_rate(avoidance_heading_direction * oag_heading_rate);
+      // make sure we have a couple of good readings before declaring the way safe
+      if (obstacle_free_confidence >= 2){
+        guidance_h_set_guided_heading(stateGetNedToBodyEulers_f()->psi);
+        navigation_state = SAFE;
+      }
+      break;*/
+
     case OUT_OF_BOUNDS:
       // stop
       guidance_h_set_guided_body_vel(0, 0);
-
       // start turn back into arena
       guidance_h_set_guided_heading_rate(avoidance_heading_direction * RadOfDeg(30));
-
       navigation_state = REENTER_ARENA;
 
       break;
+
     case REENTER_ARENA:
       // force floor center to opposite side of turn to head back into arena
       if (floor_count >= bound_count_threshold){// && avoidance_heading_direction * floor_centroid_frac >= 0.f){

@@ -52,6 +52,7 @@ struct image_t *opencv_func(struct image_t *img)
 void opencvdemo_init(void)
 {
   cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS);
+
 }
 
 

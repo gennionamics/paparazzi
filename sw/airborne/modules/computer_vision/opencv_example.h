@@ -32,6 +32,9 @@ extern "C" {
 
 extern int s;
 extern int array[20];
+extern uint32_t time_for_vertical_lines;
+extern uint32_t stop_time_vertical;
+extern uint32_t start_time_vertical;
 
 int* opencv_example(char *img, int width, int height);
 #ifdef __cplusplus

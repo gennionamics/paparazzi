@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
-#include <time.h>
 #include "pthread.h"
 
 #define PRINT(string,...) fprintf(stderr, "[object_detector->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
@@ -84,6 +83,7 @@ float cnt_right2;
 float cnt_left2;
 uint32_t start_time;
 uint32_t stop_time;
+uint32_t floor_detection_time;
 
 uint8_t vector_x[]={20, 40, 60, 80, 100};
 
@@ -222,7 +222,6 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
                               uint8_t cb_min, uint8_t cb_max,
                               uint8_t cr_min, uint8_t cr_max)
 {
-  start_time= get_sys_time_usec();
   uint32_t cnt = 0;
   uint32_t tot_x = 0;
   uint32_t tot_y = 0;
@@ -282,13 +281,13 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
     *p_xc = 0;
     *p_yc = 0;
   }
+
   return cnt;
 
 }
 
 void color_object_detector_periodic(void)
 {
-
   static struct color_object_t local_filters[2];
   pthread_mutex_lock(&mutex);
   memcpy(local_filters, global_filters, 2*sizeof(struct color_object_t));
@@ -304,6 +303,10 @@ void color_object_detector_periodic(void)
         0, 0, local_filters[1].color_count, 1);
     local_filters[1].updated = false;
   }
-	stop_time=get_sys_time_usec();
+
+  stop_time=get_sys_time_usec();
+  floor_detection_time =stop_time - start_time;
+  start_time= get_sys_time_usec();
+
 
 }

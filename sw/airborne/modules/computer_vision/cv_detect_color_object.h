@@ -47,6 +47,7 @@ extern uint8_t cod_cr_min2;
 extern uint8_t cod_cr_max2;
 extern uint32_t start_time;
 extern uint32_t stop_time;
+extern uint32_t floor_detection_time;
 extern float cnt_right;
 extern float cnt_left;
 extern float cnt_right2;

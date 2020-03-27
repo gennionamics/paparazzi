@@ -23,10 +23,11 @@
  * A simple module showing what you can do with opencv on the bebop.
  */
 
-
+#include "subsystems/abi.h"
 #include "opencv_example.h"
 #include <opencv2/opencv.hpp>
 #include <stdio.h>
+#include <time.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <vector>
@@ -39,6 +40,9 @@
 
 int s;
 int array[20];
+uint32_t start_time_vertical;
+uint32_t stop_time_vertical;
+uint32_t time_for_vertical_lines;
 
 
 // FUNCTION 1: Pre-process image ready for obstacle edge detection
@@ -180,6 +184,7 @@ draw_image_with_lines(cv::Mat* image,
             image->at<Vec3u8>(xcoord, row) = Vec3u8(12, 255, 36);
         }
     }
+
     //cv::imshow(WINDOW_TITLE, *image);
    // cv::waitKey(0);
 }
@@ -231,7 +236,7 @@ int* opencv_example(char *img, int width, int height)
         // Generate the pre-processed images
         cv::Mat preprocessed = preprocess_image(M);
         // Set the scan_height, line_width, min_ratio for obstacle verticle edge detection
-        std::vector<int> xcoords = scan_for_vertical_lines(preprocessed, 170, 6, 0.7);
+        std::vector<int> xcoords = scan_for_vertical_lines(preprocessed, 190, 5.5, 0.75);
         draw_image_with_lines(&M, 170, xcoords);
         for (uint16_t j = 0; j < 20 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
         	array[j]=0;}
@@ -239,6 +244,9 @@ int* opencv_example(char *img, int width, int height)
         for (int k = 0; k < s ; k++){
         	array[k]=xcoords[k];
         }
+    	stop_time_vertical=get_sys_time_usec();
+        time_for_vertical_lines = stop_time_vertical - start_time_vertical;
+        start_time_vertical=get_sys_time_usec();
 
 
     //}
