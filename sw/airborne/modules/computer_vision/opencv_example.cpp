@@ -37,8 +37,8 @@
 uint32_t start_time_vertical;   //Time stamp
 uint32_t stop_time_vertical;    //TIme stamp
 uint32_t time_for_vertical_lines; //Total time of execution
-int s;  					  //Transitory variable to store the number of vertical lines detected
-int array[20];                //Size-fixed array to store the location of vertical lines detected
+int number_of_lines_detected;   //Transitory variable to store the number of vertical lines detected
+int array[20];                  //Size-fixed array to store the location of vertical lines detected
 
 
 // FUNCTION 1: Pre-process image ready for obstacle edge detection
@@ -200,8 +200,8 @@ int* opencv_example(char *img, int width, int height)
   for (uint16_t j = 0; j < 20 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
 	  array[j]=0;
   	  }
-  s = static_cast<int>(xcoords.size());
-  for (int k = 0; k < s ; k++){
+  number_of_lines_detected = static_cast<int>(xcoords.size());
+  for (int k = 0; k < number_of_lines_detected ; k++){
         array[k]=xcoords[k];
         }
  stop_time_vertical=get_sys_time_usec();

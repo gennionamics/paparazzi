@@ -119,7 +119,7 @@ static struct image_t *object_detector(struct image_t *img, uint8_t filter)
       cr_max = cod_cr_max1;
       draw = cod_draw1;
       break;
-    case 2:  //Paramters fro green
+    case 2:  //Parameters for green
       lum_min = cod_lum_min2;
       lum_max = cod_lum_max2;
       cb_min = cod_cb_min2;
@@ -258,7 +258,7 @@ uint32_t find_object_centroid(struct image_t *img, int32_t* p_xc, int32_t* p_yc,
         tot_x += x;
         tot_y += y;
         if (draw){
-          *yp = 255;  // make pixel brighter in image
+          *yp = 255;  // Just as a visual aid, make pixel brighter in image
         }
 
         //Split the count to left or right

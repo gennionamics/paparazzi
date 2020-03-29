@@ -77,7 +77,7 @@ float speed_sp;						  // velocity at which the drone flies.
 
 
 //LEVEL OF CONFIDENCE
-const int16_t max_trajectory_confidence = 3;
+const int16_t max_trajectory_confidence = 3;    //Highest possible level of confidence
 
 
 // This call back will be used to receive the color count from the orange detector
@@ -118,7 +118,7 @@ void orange_avoider_guided_init(void)
   srand(time(NULL));
   avoidance_heading_direction = 1.f;
 
-  // bind our colorfilter callbacks to receive the color filter outputs
+  // Bind our colorfilter callbacks to receive the color filter outputs
   AbiBindMsgVISUAL_DETECTION(FLOOR_VISUAL_DETECTION_ID, &floor_detection_ev, floor_detection_cb);
 
 
@@ -145,7 +145,7 @@ void orange_avoider_guided_periodic(void)
   float floor_centroid_frac = floor_centroid / (float)(front_camera.output_size.h) / 2.f;
 
 
-  //Print to paparazzi winow some important values to check in real-time.
+  //Print to paparazzi window some important values to check in real-time.
   VERBOSE_PRINT("Line detection takes %d us \n", time_for_vertical_lines);
   VERBOSE_PRINT("Visual method takes %d us \n" , floor_detection_time);
   VERBOSE_PRINT("Confidence_ %d  State: %d \n", obstacle_free_confidence, navigation_state);
@@ -190,7 +190,7 @@ void orange_avoider_guided_periodic(void)
 
 
     case SEARCH_FOR_SAFE_HEADING:
-    	//If an object was detected speed lowers but if a green line was detected, speed drops to zero.
+    	//If an object was detected speed lowers proportionally to the confidence, but if a green line was detected, speed drops to zero.
     	if (number_of_lines == 0 && vertical==0){
     	guidance_h_set_guided_body_vel(0.15f*speed_sp+0.1f, 0);
     	}else{
