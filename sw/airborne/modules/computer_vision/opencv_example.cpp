@@ -17,11 +17,7 @@
  * along with paparazzi; see the file COPYING.  If not, see
  * <http://www.gnu.org/licenses/>.
  */
-/**
- * @file "modules/computer_vision/opencv_example.cpp"
- * @author C. De Wagter
- * A simple module showing what you can do with opencv on the bebop.
- */
+
 
 #include "subsystems/abi.h"
 #include "opencv_example.h"
@@ -37,12 +33,12 @@
 #include "opencv_image_functions.h"
 
 
-
-int s;
-int array[20];
-uint32_t start_time_vertical;
-uint32_t stop_time_vertical;
-uint32_t time_for_vertical_lines;
+//Definition of variables
+uint32_t start_time_vertical;   //Time stamp
+uint32_t stop_time_vertical;    //TIme stamp
+uint32_t time_for_vertical_lines; //Total time of execution
+int s;  					  //Transitory variable to store the number of vertical lines detected
+int array[20];                //Size-fixed array to store the location of vertical lines detected
 
 
 // FUNCTION 1: Pre-process image ready for obstacle edge detection
@@ -150,6 +146,7 @@ scan_for_vertical_lines(const cv::Mat& image,
     std::merge(from_top.begin(),    from_top.end(),
                from_bottom.begin(), from_bottom.end(),
                std::back_inserter(lines));
+
     // Remove duplicated lines scanned from top and from bottom
     std::sort(lines.begin(), lines.end());
     lines.erase(std::unique(lines.begin(), lines.end()), lines.end());
@@ -184,71 +181,32 @@ draw_image_with_lines(cv::Mat* image,
             image->at<Vec3u8>(xcoord, row) = Vec3u8(12, 255, 36);
         }
     }
-
-    //cv::imshow(WINDOW_TITLE, *image);
-   // cv::waitKey(0);
 }
 
-
+//MAIN PROGRAM
 int* opencv_example(char *img, int width, int height)
 {
 
   // Create a new image, using the original bebop image.
   cv::Mat M(height, width, CV_8UC2, img);
-  //cv::Mat image;
-
-/*#if OPENCVDEMO_GRAYSCALE
-  //  Grayscale image example
-  cvtColor(M, image, CV_YUV2GRAY_Y422);
-  // Canny edges, only works with grayscale image
-  int edgeThresh = 35;
-  Canny(image, image, edgeThresh, edgeThresh * 3);
-  // Convert back to YUV422, and put it in place of the original image
-  grayscale_opencv_to_yuv422(image, img, width, height);
-#else // OPENCVDEMO_GRAYSCALE
-  // Color image example
-  // Convert the image to an OpenCV Mat
-  cvtColor(M, image, CV_YUV2BGR_Y422);
-  // Blur it, because we can
-  blur(image, image, Size(5, 5));
-  // Convert back to YUV422 and put it in place of the original image
-  colorbgr_opencv_to_yuv422(image, img, width, height);
-#endif // OPENCVDEMO_GRAYSCALE*/
-
-
-    //cv::VideoCapture capture("/home/sunyi/Documents/vertical_test/%d.jpg");
-   // cv::VideoCapture capture(struct image_t *img);
-  /*  if (!capture.isOpened())
-    {
-        std::cout << "Could not open the video capture!" << std::endl;
-        return -1;
-    }*/
-   // while (true)
-    //{
-        // Capture and display a full folder of images
-       // cv::Mat frame;
-      /*  if (!capture.read(frame)) {
-            break;
-        }*/
-        // Rotate the original colorful image as a canvas for the function draw_image_with_lines
-        cv::Mat rotated_original;
-       cv::rotate(M, rotated_original, cv::ROTATE_90_COUNTERCLOCKWISE);
-        // Generate the pre-processed images
-        cv::Mat preprocessed = preprocess_image(M);
-        // Set the scan_height, line_width, min_ratio for obstacle verticle edge detection
-        std::vector<int> xcoords = scan_for_vertical_lines(preprocessed, 190, 5.5, 0.75);
-        draw_image_with_lines(&M, 170, xcoords);
-        for (uint16_t j = 0; j < 20 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
-        	array[j]=0;}
-         s = static_cast<int>(xcoords.size());
-        for (int k = 0; k < s ; k++){
-        	array[k]=xcoords[k];
+  // Rotate the original colorful image as a canvas for the function draw_image_with_lines
+  cv::Mat rotated_original;
+  cv::rotate(M, rotated_original, cv::ROTATE_90_COUNTERCLOCKWISE);
+  // Generate the pre-processed images
+  cv::Mat preprocessed = preprocess_image(M);
+  // Set the scan_height, line_width, min_ratio for obstacle verticle edge detection
+  std::vector<int> xcoords = scan_for_vertical_lines(preprocessed, 190, 4, 0.85);
+  draw_image_with_lines(&M, 170, xcoords);
+  for (uint16_t j = 0; j < 20 ; j++){   ///LINE 220-221 RESET POSITION OF VERTICAL LINES, COMMENT THEM IF YOU GER ONLY ZEROS.
+	  array[j]=0;
+  	  }
+  s = static_cast<int>(xcoords.size());
+  for (int k = 0; k < s ; k++){
+        array[k]=xcoords[k];
         }
-    	stop_time_vertical=get_sys_time_usec();
-        time_for_vertical_lines = stop_time_vertical - start_time_vertical;
-        start_time_vertical=get_sys_time_usec();
+ stop_time_vertical=get_sys_time_usec();
+ time_for_vertical_lines = stop_time_vertical - start_time_vertical;
+ start_time_vertical=get_sys_time_usec();
 
-
-    //}
-    return 0;
+ return 0;
 }

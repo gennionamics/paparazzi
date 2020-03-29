@@ -5,24 +5,19 @@
  *
  */
 /**
- * @file "modules/orange_avoider/orange_avoider_guided.c"
- * @author Kirk Scheper
- * This module is an example module for the course AE4317 Autonomous Flight of Micro Air Vehicles at the TU Delft.
- * This module is used in combination with a color filter (cv_detect_color_object) and the guided mode of the autopilot.
- * The avoidance strategy is to simply count the total number of orange pixels. When above a certain percentage threshold,
- * (given by color_count_frac) we assume that there is an obstacle and we turn.
+ * This file contains the main navigation algorithm for obstacle avoidance of a drone flying in the cyberzoo, as part of the final assignment of AE4317 in TU Delft.
+ * The code is aided by two computer vision algorithm that can be located in cv_detect_color_object.c and opencv_example.cpp. THe first file focuses on detecting the
+ * the green pixels of an image corresponding to the floor. It uses this parameter to decide if it's safe to fly in a certain direction. The count of green pixels is
+ * compared with two thresholds to check whether the green pixel count correspond to an obstacle detected or if the drone is getting out of boundaries. Further,
+ * the green count is splitted into left and right so the drone can decide where to turn in case it is not safe to continue straight.
  *
- * The color filter settings are set using the cv_detect_color_object. This module can run multiple filters simultaneously
- * so you have to define which filter to use with the ORANGE_AVOIDER_VISUAL_DETECTION_ID setting.
- * This module differs from the simpler orange_avoider.xml in that this is flown in guided mode. This flight mode is
- * less dependent on a global positioning estimate as witht the navigation mode. This module can be used with a simple
- * speed estimate rather than a global position.
+ * The second algorithm that can be found in orangecv_example.cpp, although it's feedback is retrieved at all times, it's only used as an auxiliary method in cases of
+ * emergency, where the previous algorithm fails to detect an unsafe situation. Through functions of OpenCV, this algorithm detects vertical lines that correspond
+ * to edges of objects in the cyberzoo. Once a vertical line is detected, it will immediately force the drone to drop the velocity to zero and start turning to another
+ * dircection.
  *
- * Here we also need to use our onboard sensors to stay inside of the cyberzoo and not collide with the nets. For this
- * we employ a simple color detector, similar to the orange poles but for green to detect the floor. When the total amount
- * of green drops below a given threshold (given by floor_count_frac) we assume we are near the edge of the zoo and turn
- * around. The color detection is done by the cv_detect_color_object module, use the FLOOR_VISUAL_DETECTION_ID setting to
- * define which filter to use.
+ * This file models the navigation behavior of the drone in a state machine.  JUmping from one state to another will depend on level of confidence whose values is
+ * defined by the feedback from the computer vision algorithms. At the same time, this level of confidence is used to set the velocity at which the drone can fly.
  */
 
 #include "modules/orange_avoider/orange_avoider_guided.h"
@@ -48,17 +43,13 @@
 #endif
 static pthread_mutex_t mutex;
 
-
-float dir_cnt;
-
 uint8_t chooseRandomIncrementAvoidance(void);
 
+//DEFINITION OF THE STATES IN THE STATE MACHINE
 enum navigation_state_t {
   SAFE,
   OBSTACLE_FOUND,
-//  VERTICAL_LINE_DETECTED,
   SEARCH_FOR_SAFE_HEADING,
-//  SEARCH_FOR_SAFE_HEADING_VERTICAL_LINE_DETECTED,
   OUT_OF_BOUNDS,
   REENTER_ARENA
 };
@@ -66,79 +57,61 @@ enum navigation_state_t {
 // define settings
 float oag_color_count_frac = 0.175f;       // obstacle detection threshold as a fraction of total of image
 float oag_floor_count_frac = 0.0625f;       // floor detection threshold as a fraction of total of image
-float oag_max_speed = 0.9f;               // max flight speed [m/s]
+float oag_max_speed = 0.7f;               // max flight speed [m/s]
 float oag_heading_rate = RadOfDeg(50.f);  // heading change setpoint for avoidance [rad/s]
+
 
 // define and initialise global variables
 enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;   // current state in state machine
-int32_t color_count = 0;                // orange color count from color filter for obstacle detection
 int32_t floor_count = 0;                // green color count from color filter for floor detection
 int32_t floor_centroid = 0;             // floor detector centroid in y direction (along the horizon)
 float avoidance_heading_direction = 0;  // heading change direction for avoidance [rad/s]
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead if safe.
-//int32_t cnt_right_orange;
-//int32_t cnt_left_orange;
-int32_t cnt_right_green;
-int32_t cnt_left_green;
-uint32_t start_time_orange;
-uint32_t stop_time_orange;
-int vertical_lines[20];
+uint32_t cnt_right_green;			    // local variable to store the count of green pixels at the right
+uint32_t cnt_left_green;				   // local variable to store the count of green pixels at the left
+uint8_t vertical;					   // auxiliary variable to force the drone to keep turning once a vertical line is detected
+int vertical_lines[20];				  // local variable to store the location of the vertical lines detected.
+float speed_sp;						  // velocity at which the drone flies.
 
 
 
 
 //LEVEL OF CONFIDENCE
-const int16_t max_trajectory_confidence = 3;  // number of consecutive negative object detections to be sure we are obstacle free
+const int16_t max_trajectory_confidence = 3;
+
 
 // This call back will be used to receive the color count from the orange detector
 #ifndef ORANGE_AVOIDER_VISUAL_DETECTION_ID
 #error This module requires two color filters, as such you have to define ORANGE_AVOIDER_VISUAL_DETECTION_ID to the orange filter
 #error Please define ORANGE_AVOIDER_VISUAL_DETECTION_ID to be COLOR_OBJECT_DETECTION1_ID or COLOR_OBJECT_DETECTION2_ID in your airframe
 #endif
-static abi_event color_detection_ev;
 
-//HERE ASSIGN  FOR OTHER GLOBAL VARIABLE FROM CV DETECT COLOR FOR THE FLOOR
-static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
-                               int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
-                               int16_t __attribute__((unused)) pixel_width, int16_t __attribute__((unused)) pixel_height,
-                               int32_t quality, int16_t __attribute__((unused)) extra)
-{
-  color_count = quality;
- // cnt_left_orange=cnt_left;
- // cnt_right_orange=cnt_right;
 
-}
-
+//This call back is used to receive the floor count (green pixels) from the CV DETECT COLOR OBJECT.
 #ifndef FLOOR_VISUAL_DETECTION_ID
 #error This module requires two color filters, as such you have to define FLOOR_VISUAL_DETECTION_ID to the orange filter
 #error Please define FLOOR_VISUAL_DETECTION_ID to be COLOR_OBJECT_DETECTION1_ID or COLOR_OBJECT_DETECTION2_ID in your airframe
 #endif
 static abi_event floor_detection_ev;
 
-///HERE ASSIGN FOR OTHER GLOBAL VARIABLE FROM CV DETECT COLOR FOR THE FLOOR
+
+///The values coming from the computer vision algorithms are assigned to local variables
 static void floor_detection_cb(uint8_t __attribute__((unused)) sender_id,
                                int16_t __attribute__((unused)) pixel_x, int16_t pixel_y,
                                int16_t __attribute__((unused)) pixel_width, int16_t __attribute__((unused)) pixel_height,
                                int32_t quality, int16_t __attribute__((unused)) extra)
 {
-  floor_count = quality;
-  floor_centroid = pixel_y;
-  cnt_left_green=cnt_left;
-  cnt_right_green=cnt_right;
-  for(uint16_t j = 0; j < 20 ; j++){
+  floor_count = quality;					//Total count of green pixels
+  floor_centroid = pixel_y;					//Centroid
+  cnt_left_green=cnt_left;					//Count of green at left
+  cnt_right_green=cnt_right;				//Count of green at right
+  for(uint16_t j = 0; j < 20 ; j++){		//Location of vertical lines detected.
 	  vertical_lines[j]=array[j];}
 }
 
-/*static void send_count(struct transport_tx *trans, struct link_device *dev)
-{
 
-  // Send telemetry message
-  pprz_msg_send_COUNT(trans, dev, AC_ID, &cnt_left, &cnt_right);
-}*/
+  //  Initialisation function
 
- /*
-    Initialisation function
- */
 void orange_avoider_guided_init(void)
 {
   // Initialise random values
@@ -146,124 +119,94 @@ void orange_avoider_guided_init(void)
   avoidance_heading_direction = 1.f;
 
   // bind our colorfilter callbacks to receive the color filter outputs
-  AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
   AbiBindMsgVISUAL_DETECTION(FLOOR_VISUAL_DETECTION_ID, &floor_detection_ev, floor_detection_cb);
- // register_periodic_telemetry(DefaultPeriodic, 45, send_count);
+
 
 }
 
 
-/*
- * Function that checks it is safe to move forwards, and then sets a forward velocity setpoint or changes the heading
- */
+
+ //Function that checks it is safe to move forwards, and then sets a forward velocity setpoint or changes the heading
+
 void orange_avoider_guided_periodic(void)
 {
-  start_time_orange=get_sys_time_usec();
 
-  // Only run the mudule if we are in the correct flight mode
+
+  // Only run the module if we are in the correct flight mode
   if (guidance_h.mode != GUIDANCE_H_MODE_GUIDED) {
     navigation_state = SEARCH_FOR_SAFE_HEADING;
     obstacle_free_confidence = 0;
     return;
   }
 
-  // compute current color thresholds
-  int32_t obstacle_count_threshold = oag_color_count_frac * 5 * (front_camera.output_size.h - 70);
-  int32_t bound_count_threshold = oag_floor_count_frac * 5 * front_camera.output_size.h;
-  float floor_centroid_frac = floor_centroid / (float)front_camera.output_size.h / 2.f;
+  //Compute current color thresholds
+  int32_t obstacle_count_threshold = oag_color_count_frac * 5 * (front_camera.output_size.h - 110);   //5 because it only checks the count in 5 rows and -110 to take out lateral bounds
+  int32_t bound_count_threshold = oag_floor_count_frac * 5 * front_camera.output_size.h;			  //5 because it only checks the count in 5 rows
+  float floor_centroid_frac = floor_centroid / (float)(front_camera.output_size.h) / 2.f;
 
 
-  //IF YOU WANT TO SEE ANY OTHER VARIABLE ON REAL-TIME IN PAPARAZZI PUT IT HERE
+  //Print to paparazzi winow some important values to check in real-time.
   VERBOSE_PRINT("Line detection takes %d us \n", time_for_vertical_lines);
   VERBOSE_PRINT("Visual method takes %d us \n" , floor_detection_time);
-  // VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, obstacle_count_threshold, navigation_state);
-  VERBOSE_PRINT("Floor count: %d, threshold: %d \n", floor_count, bound_count_threshold);
- // VERBOSE_PRINT("Floor centroid: %f\n", floor_centroid_frac);
+  VERBOSE_PRINT("Confidence_ %d  State: %d \n", obstacle_free_confidence, navigation_state);
   VERBOSE_PRINT("Left count: %d   Right count: %d\n",cnt_left_green,cnt_right_green);
-  VERBOSE_PRINT("Confidence: %d\n", obstacle_free_confidence);
-
-
-  //UNCOMMENT THESE LINES TO PRINT THE X COORDINATES OF THE VERTICAL LINES DETECTED ON PAPARAZZI
-  //for (uint16_t j = 0; j < 20 ; j++){
-  //VERBOSE_PRINT("Vertical lines: %d\n", vertical_lines[j]);
-  //}
-
   uint8_t number_of_lines=0;
   for(uint16_t j = 0; j < 20 ; j++){
 	  if (vertical_lines[j]!=0){
 		  number_of_lines++;}
 	  }
+  VERBOSE_PRINT("Vertical lines detected: %d\n", number_of_lines);
+  VERBOSE_PRINT("Vertical: %d\n", vertical);
 
-
-
-  // update our safe confidence using color threshold
+  // Update our safe confidence using obstacle  threshold
   if(floor_count > obstacle_count_threshold){
     obstacle_free_confidence++;
-  } else {
-    obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
+  } else{
+    obstacle_free_confidence -= 2;
   }
 
-  // bound obstacle_free_confidence
-  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
+  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);  //Bound level of confidence from 0-3
 
-  float speed_sp = fminf(oag_max_speed, 0.3f * obstacle_free_confidence);
+  speed_sp = fminf(oag_max_speed, 0.25f * obstacle_free_confidence);  //Define speed as minimum value between max allowed speed and the one given by level of confidence
 
   switch (navigation_state){
     case SAFE:
-      if (floor_count < bound_count_threshold){ //|| fabsf(floor_centroid_frac) > 0.1){
-        navigation_state = OUT_OF_BOUNDS;
-      } else if (obstacle_free_confidence == 0){
+      if (floor_count < bound_count_threshold){
+        navigation_state = OUT_OF_BOUNDS;      //Activated when floor count is below the lower green threshold
+      } else if ((obstacle_free_confidence == 0)||((number_of_lines!=0 && obstacle_free_confidence>=2))) {   //Activate depending on level of confidence or if a vertical line is detected
         navigation_state = OBSTACLE_FOUND;
-    /*  } else if (number_of_lines!=0 && obstacle_free_confidence>=2){
-          navigation_state = VERTICAL_LINE_DETECTED;*/
-      }else {
+      }else{
+    	vertical=0;		//Reset vertical so the drone stops turning
         guidance_h_set_guided_body_vel(speed_sp, 0);
       }
-
       break;
 
-   /* case VERTICAL_LINE_DETECTED:
-      // stop
-      guidance_h_set_guided_body_vel(0, 0);
-
-      // randomly select new search direction
-      chooseRandomIncrementAvoidance();
-
-    navigation_state = SEARCH_FOR_SAFE_HEADING_VERTICAL_LINE_DETECTED;
-    break;*/
 
     case OBSTACLE_FOUND:
-      // stop
-      //guidance_h_set_guided_body_vel(0, 0);
-
-      // randomly select new search direction
+    	//Choose a direction to turn
       chooseRandomIncrementAvoidance();
-
       navigation_state = SEARCH_FOR_SAFE_HEADING;
       break;
 
-    case SEARCH_FOR_SAFE_HEADING:
-    	guidance_h_set_guided_body_vel(0.11f*speed_sp+0.12f, 0);
-    	guidance_h_set_guided_heading_rate(avoidance_heading_direction * oag_heading_rate);
 
-      // make sure we have a couple of good readings before declaring the way safe
-      if (obstacle_free_confidence >= 2){
+    case SEARCH_FOR_SAFE_HEADING:
+    	//If an object was detected speed lowers but if a green line was detected, speed drops to zero.
+    	if (number_of_lines == 0 && vertical==0){
+    	guidance_h_set_guided_body_vel(0.15f*speed_sp+0.1f, 0);
+    	}else{
+    	guidance_h_set_guided_body_vel(0, 0);
+    	vertical=1;
+    	}
+    	guidance_h_set_guided_heading_rate(avoidance_heading_direction * oag_heading_rate);
+      if (obstacle_free_confidence > 0 && number_of_lines==0){
         guidance_h_set_guided_heading(stateGetNedToBodyEulers_f()->psi);
         navigation_state = SAFE;
       }
       break;
 
-   /* case SEARCH_FOR_SAFE_HEADING_VERTICAL_LINE_DETECTED:
-    	guidance_h_set_guided_heading_rate(avoidance_heading_direction * oag_heading_rate);
-      // make sure we have a couple of good readings before declaring the way safe
-      if (obstacle_free_confidence >= 2){
-        guidance_h_set_guided_heading(stateGetNedToBodyEulers_f()->psi);
-        navigation_state = SAFE;
-      }
-      break;*/
 
     case OUT_OF_BOUNDS:
-      // stop
+      // Stop
       guidance_h_set_guided_body_vel(0, 0);
       // start turn back into arena
       guidance_h_set_guided_heading_rate(avoidance_heading_direction * RadOfDeg(30));
@@ -273,7 +216,7 @@ void orange_avoider_guided_periodic(void)
 
     case REENTER_ARENA:
       // force floor center to opposite side of turn to head back into arena
-      if (floor_count >= bound_count_threshold){// && avoidance_heading_direction * floor_centroid_frac >= 0.f){
+      if (floor_count >= bound_count_threshold && avoidance_heading_direction * floor_centroid_frac >= 0.f){
         // return to heading mode
         guidance_h_set_guided_heading(stateGetNedToBodyEulers_f()->psi);
 
@@ -288,31 +231,27 @@ void orange_avoider_guided_periodic(void)
       break;
   }
 
-  ///RESET VARIABLE HERE
+  ///RESET GLOBAL VARIABLE SO THE VALUES DOESN'T ACCUMULATE FOR THE NEXT ITERATION
   pthread_mutex_lock(&mutex);
   cnt_right=0;
   cnt_left=0;
-  //cnt_left2=0;
-  //cnt_right2=0;
   pthread_mutex_unlock(&mutex);
-  stop_time_orange=get_sys_time_usec();
   return;
 
 }
 
-/*
- * Sets the variable 'incrementForAvoidance' randomly positive/negative
- */
+
+//Function to choose the direction of turning when looking for a new direction
 uint8_t chooseRandomIncrementAvoidance(void)
 {
 
-  // Randomly choose CW or CCW avoiding direction
+  // Turn to the side with the highest green count
   if (cnt_right_green<cnt_left_green){
     avoidance_heading_direction = -1.f; //Negative is left
     VERBOSE_PRINT("Set avoidance increment to: %f\n", avoidance_heading_direction * oag_heading_rate);
 
   } else  {
-    avoidance_heading_direction = 1.f;
+    avoidance_heading_direction = 1.f; //Positive is right
     VERBOSE_PRINT("Set avoidance increment to: %f\n", avoidance_heading_direction * oag_heading_rate);
 
   }
