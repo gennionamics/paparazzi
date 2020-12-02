@@ -2,18 +2,24 @@
 <!DOCTYPE airframe SYSTEM "../airframe.dtd">
 
 <!-- this is a quadrotor frame equiped with
-* Autopilot:   Pixracer
+* Autopilot:   Pixhawk4
 * IMU:         MPU 9250 & MS5611
 * Actuators:   PWM motor controllers
 * GPS:
-* RC:          Spektrum
+* RC:          Crossfire
 -->
-<airframe name="splash">
-  <description>Pixracer
+<airframe name="nederquad">
+  <description>Release me from the demon
   </description>
   <firmware name="rotorcraft">
-    <target name="ap" board="px4fmu_5.0_chibios" />
+    <!-- <configure name="FLASH_MODE" value="SWD"/> -->
+    <target name="ap" board="px4fmu_5.0_chibios">
+    </target>
+    
+
     <define name="BAT_CHECKER_DELAY" value="80" />
+
+
     <!-- amount of time it take for the bat to check -->
     <!-- to avoid bat low spike detection when strong pullup withch draws short sudden power-->
     <define name="CATASTROPHIC_BATTERY_KILL_DELAY" value="80" />
@@ -27,15 +33,7 @@
       <define name="MPU9250_LOWPASS_FILTER" value="MPU60X0_DLPF_256HZ"/>
       <define name="MPU9250_SMPLRT_DIV" value="3"/>-->
 
-      <configure name="AHRS_PROPAGATE_FREQUENCY" value="2000"/><!--  unit="Hz" -->
-      <configure name="AHRS_CORRECT_FREQUENCY" value="2000"/> <!--  unit="Hz" -->
-      <configure name="AHRS_MAG_CORRECT_FREQUENCY" value="50"/><!-- best value unit="Hz" for ACTIVE magneto -->
-
-      <configure name="NAVIGATION_FREQUENCY" value="16"/> <!--  unit="Hz" -->
-      <configure name="CONTROL_FREQUENCY" value="120"/> <!--  unit="Hz" -->
-      <!--<configure name="TELEMETRY_FREQUENCY" value="60"/--> <!--  unit="Hz" -->
-      <configure name="MODULES_FREQUENCY" value="2048"/> <!--  unit="Hz" -->
-    <module name="telemetry" type="transparent">
+      <configure name="AH<configure name="FLASH_MODE" value="SWD"/>elemetry" type="transparent">
        <configure name="MODEM_PORT" value="UART3"/><!--  Telem2 on pixracer -->
        <configure name="MODEM_BAUD" value="B57600"/>
     </module>
@@ -62,7 +60,7 @@
         <define name="IMU_MPU9250_Z_SIGN" value="+1"/>
     </module>
     
-<module name="baro_ms5611_spi" >
+    <module name="baro_ms5611_spi" >
       <configure name="MS5611_SPI_DEV" value="spi1"/>
       <configure name="MS5611_SLAVE_IDX" value="SPI_SLAVE3"/>
       <!--<define name="SENSOR_SYNC_SEND"/>-->
@@ -83,9 +81,7 @@
       <define name="AHRS_GPS_SPEED_IN_NEGATIVE_Z_DIRECTION" value="FALSE"/> <!-- AHRS_GRAVITY_UPDATE_COORDINATED_TURN assumes the GPS speed is in the X axis direction. Quadshot, DelftaCopter and other hybrids can have the GPS speed in the negative Z direction" -->
       <!--<define name="AHRS_PROPAGATE_LOW_PASS_RATES" value="TRUE"/>--> <!-- apply a low pass filter on rotational velocity"-->
       <!--<define name="AHRS_BIAS_UPDATE_HEADING_THRESHOLD" value="0.174533"/>--><!--unit="rad"/--><!-- don't update gyro bias if heading deviation is above this rotation threshold"-->
-      <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="3.0"/> <!--unit="m/s"--> <!-- CAREFULL,  Don't update heading from GPS course if GPS ground speed is below is this threshold in m/s" -->
-      <!-- Some insights https://lists.nongnu.org/archive/html/paparazzi-devel/2013-10/msg00126.html -->
-      <!--define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="0.0"/--> <!-- TODO: determine Default is 30.0 Reduce accelerometer cut-off frequency when the vehicle is accelerating: norm(ax,ay,az) 9,81 m/s2. WARNING: when the IMU is not well damped, the norm of accelerometers never equals to 9,81 m/s2. As a result, the GRAVITY_HEURISTIC_FACTOR will reduce the accelerometer bandwith even if the vehicle is not accelerating. -->
+     <configure name="FLASH_MODE" value="SWD"/>--define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="0.0"/--> <!-- TODO: determine Default is 30.0 Reduce accelerometer cut-off frequency when the vehicle is accelerating: norm(ax,ay,az) 9,81 m/s2. WARNING: when the IMU is not well damped, the norm of accelerometers never equals to 9,81 m/s2. As a result, the GRAVITY_HEURISTIC_FACTOR will reduce the accelerometer bandwith even if the vehicle is not accelerating. -->
       <!--<define name="AHRS_FC_IMU_ID" value="ABI_BROADCAST"/>--> <!-- ABI sender id of IMU to use Change is you change your AHRS type -->
       <define name="AHRS_FC_MAG_ID" value="MAG_HMC58XX_SENDER_ID" /><!-- MAG_CALIB_UKF_ID for when using the mag_clib_ukf  change your AHRS type-->
         <!--<define name="AHRS_FC_MAG_ID" value="MAG_QMC5883_SENDER_ID" />--><!-- Use this insted of MAG_HMC5883_SENDER_ID for alternative sensor -->
@@ -98,7 +94,6 @@
       <define name="SERVO_HZ" value="400" />
     </module>
 
-
     <module name="motor_mixing" />
 
       <!-- SBUS out is AETR by default, our transmitter sends TAER as per standard so correct in radio file -->
@@ -107,25 +102,21 @@
         <!-- Mode set one a three way switch -->
         <!--  Per default already GEAR if not defined  <define name="RADIO_MODE" value="RADIO_GEAR"/> --><!-- yes, already done by default if not redefined to something else-->
         <define name="RADIO_KILL_SWITCH" value="RADIO_AUX1"/>
+         <define name="RADIO_FLAPS" value="RADIO_AUX1"/>
         <configure name="SBUS_PORT" value="UART2"/>
       </module>
 
-  <module name="logger_sd_spi_direct.xml">
-      <configure name="SDLOGGER_DIRECT_SPI" value="spi2"/>
-      <configure name="SDLOGGER_DIRECT_SPI_SLAVE" value="SPI_SLAVE4"/>
-      <configure name="SDLOGGER_DIRECT_CONTROL_SWITCH" value="RADIO_AUX2"/>
-      <configure name="LOGGER_LED" value="3"/>
-    </module>
+       <!-- Logger -->
+      <module name="tlsf"/>
+      <module name="pprzlog"/>
+      <module name="logger" type="sd_chibios"/>
+      <module name="flight_recorder"/>-->
     
-    
-
-    <module name="px4_flash"/>
+    <!-- <module name="px4_flash"/> -->
     <module name="geo_mag" />
     <module name="air_data" />
     <module name="send_imu_mag_current" />
     <!--<module name="spektrum_soft_bind"/>-->
-
-
 
   <!-- For R14 a HMC5883 magneto on the main PCB, test if conflicts with other magneto -->
     <!--module name="mag" type="hmc58xx">
@@ -196,12 +187,14 @@
     <axis name="ROLL" failsafe_value="0" />
     <axis name="YAW" failsafe_value="0" />
     <axis name="THRUST" failsafe_value="0" />
+    <axis name="FLAPS" failsafe_value="0"/>
   </commands>
   <rc_commands>
     <set command="THRUST" value="@THROTTLE" />
     <set command="ROLL" value="@ROLL" />
     <set command="PITCH" value="@PITCH" />
     <set command="YAW" value="@YAW" />
+    <set command="FLAPS" value="@YAW" />
   </rc_commands>
   <servos driver="Default">
     <servo name="TOP_LEFT" no="3" min="1000" neutral="1100" max="2000" />
@@ -244,7 +237,6 @@
     <define name="SONAR_UPDATE_ON_AGL" value="TRUE" />
   </section>
  
-  
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
     <!-- control effectiveness -->
     <define name="G1_P" value="0.02692" />
@@ -276,6 +268,7 @@
     <define name="STABILIZATION_INDI_MAX_RATE" value="343.77" unit="deg/s"/>
     <define name="STABILIZATION_INDI_MAX_R" value="200" unit="deg/s"/> <!--Does not seem to be applied-->
   </section>
+  
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
     <!-- setpoints -->
     <define name="SP_MAX_PHI" value="45" unit="deg"/>
@@ -326,6 +319,7 @@
     <define name="NOMINAL_HOVER_THROTTLE" value="0.36" />
     <define name="ADAPT_THROTTLE_ENABLED" value="FALSE" />
   </section>
+  
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
     <!-- Good weather -->
     <define name="MAX_BANK" value="20" unit="deg" />
@@ -336,10 +330,12 @@
     <define name="DGAIN" value="100" />
     <define name="IGAIN" value="30" />
   </section>
+  
   <section name="NAVIGATION" prefix="NAV_">
     <define name="CLIMB_VSPEED" value="4.5" />
     <define name="DESCEND_VSPEED" value="-1.0" />
   </section>
+
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_ATTITUDE_DIRECT" />
     <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT" />

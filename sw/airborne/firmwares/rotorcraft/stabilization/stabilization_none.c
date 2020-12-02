@@ -63,9 +63,9 @@ void stabilization_none_run(bool in_flight __attribute__((unused)))
   float yawrate = RATE_FLOAT_OF_BFP(imu.gyro.r); // Radians/second
   /* just directly pass rc commands through */
 
-  int32_t pitchdamper =  (int32_t) (pitchrate * fbw_setting_damper_pitch);
+  int32_t pitchdamper =  (int32_t) (pitchrate * 1);
   Bound(pitchdamper , -3000, 3000);
-  int32_t yawdamper =  (int32_t) (yawrate * fbw_setting_damper_yaw);
+  int32_t yawdamper =  (int32_t) (yawrate * 1);
   Bound(yawdamper , -3000, 3000);
 
   stabilization_cmd[COMMAND_ROLL]  = stabilization_none_rc_cmd.p + yawdamper;
